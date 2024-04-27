@@ -1,5 +1,5 @@
 ## Mini Projects
-Started Summer 2024, a way to use various technologies with ~3 day long projects! With each project, Projects will be used to initialize larger projects and/or for general learning. 
+Started Summer 2024, a way to learn various technologies with ~3 day long projects! Projects will be used to start larger projects, for others, general learning, and more. 
 
 For each project, I will be using a key concepts that I have learned/utilized from the previous project
 
