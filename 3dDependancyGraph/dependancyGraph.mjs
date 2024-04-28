@@ -1,9 +1,7 @@
-// import fs from 'fs';
-import readline from 'readline';
+import { promises as fsPromises, createReadStream } from 'fs';
+import { createInterface } from 'readline';
 import path from 'path';
-
-import { promises as fs } from 'fs';
-const { readdir } = fs;
+import { readdir } from 'fs/promises';
 
 
 class CreateConnections {
@@ -35,25 +33,26 @@ class CreateConnections {
     * @param {string, string} dirname, filename - Used to create file path
     */
     async ReadFile(dirname, filename) {
-        const fileStream = fs.createReadStream(path.join(dirname, filename), 'utf-8');
+        try {
+            const fileStream = createReadStream(path.join(dirname, filename), 'utf-8');
 
-        const rl = readline.createInterface({
-            input: fileStream,
-            crlfDelay: Infinity
-        });
-
-        //Interface provides line for Event Listener
-        rl.on('line', async (line) => {
-            this.AddToGraph(path.join(dirname, filename), line);
-        });
-
-        //Finally, when all files read, close and return Promise
-        return new Promise((resolve, reject) => {
-            rl.on('close', () => {
-                console.log("closed");
-                resolve();
+            const rl = createInterface({
+                input: fileStream,
+                crlfDelay: Infinity
             });
-        });
+
+            rl.on('line', async (line) => {
+                this.AddToGraph(path.join(dirname, filename), line);
+            });
+
+            return new Promise((resolve, reject) => {
+                rl.on('close', () => {
+                    resolve();
+                });
+            });
+        } catch (error) {
+            console.error(`Error reading file ${filename}:`, error);
+        }
     }
 
     /**
@@ -75,6 +74,18 @@ class CreateConnections {
         }
     }
 }
+
+
+//Testing function, allows async code to be processed
+async function test(){
+    var connections = new CreateConnections();
+
+    await connections.OpenFiles("./test");
+
+    console.log(connections.graph)
+
+}
+test();
 
 
 export { CreateConnections };
