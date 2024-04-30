@@ -1,10 +1,18 @@
 import { promises as fsPromises, createReadStream } from 'fs';
 import { createInterface } from 'readline';
-import path from 'path';
+import * as path from 'path';
 import { readdir } from 'fs/promises';
 
+type nestDict = {
+    [key: string]: string[];
+}
 
-class CreateConnections {
+type Graph = {
+    [key: string]: nestDict;
+};
+
+export class CreateConnections {
+    graph: Graph;
     constructor() {
         this.graph = {};
     }
@@ -45,7 +53,7 @@ class CreateConnections {
                 this.AddToGraph(path.join(dirname, filename), line);
             });
 
-            return new Promise((resolve, reject) => {
+            return new Promise<void>((resolve, reject) => {
                 rl.on('close', () => {
                     resolve();
                 });
@@ -87,5 +95,4 @@ async function test(){
 }
 test();
 
-
-export { CreateConnections };
+// export default { CreateConnections };
