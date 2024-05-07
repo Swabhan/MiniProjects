@@ -1,5 +1,6 @@
 //Imports
 import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 //Example Dependancy Graph
 var graph = {
@@ -32,9 +33,9 @@ var associations = {
 
 //Initialize Scene
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 0.1, 100000 );
+const camera = new THREE.PerspectiveCamera( 100, window.innerWidth / window.innerHeight, 0.1, 100000 );
 
-camera.position.z = 15;
+camera.position.z = 30;
 
 camera.position.x = 15;
 camera.position.y = -10;
@@ -150,28 +151,37 @@ function positionRelatedMeshes(relation, scene, filed) {
         const parentIndex = filed[key];
 
         if (!placed.has(parentIndex)) {
-            scene.children[parentIndex].position.x = Math.random() * 30;
+            scene.children[parentIndex].position.x = Math.random() * 25;
             placed.add(parentIndex);
         }
 
         var parentX = scene.children[parentIndex].position.x;
         var parentY = scene.children[parentIndex].position.y;
 
-        var addX = 0;
-        var addY = 8; // Start from some initial value for Y
+		
+
+        var addX = 4;
+        var addY = 4;
 
         for (const value in relation[key]) {
             const childIndex = filed[relation[key][value]];
 
             if (!placed.has(childIndex)) {
-                scene.children[childIndex].position.x = parentX + addX;
-                scene.children[childIndex].position.y = parentY - addY;
+				if(parentY % 8 == 0){
+					scene.children[childIndex].position.x = parentX + addX + 2;
+                	scene.children[childIndex].position.y = parentY - addY;
+				}
+				else {
+					scene.children[childIndex].position.x = parentX + addX;
+                	scene.children[childIndex].position.y = parentY - addY;
+				}
+                
 
                 placed.add(childIndex);
             }
 
-            addX += 5;
-            addY += 8;
+            addX += 4;
+            addY += 4;
         }
     }
 }
@@ -189,23 +199,31 @@ material = new THREE.LineBasicMaterial( { color: 0x0000ff } );
 var points = [];
 var sceneLine = new THREE.Line( geometry, material );
 
-function connect(relation, mesh1, mesh2) {
-    const arrowSize = 0.3; // Size of the arrow symbol
+var connections = [];
 
-    // Set Points of line
+function connect(relation, mesh1, mesh2) {
+    const arrowSize = 0.3;
+
     points = [];
     var mesh1 = mesh1.position;
     var mesh2 = mesh2.position;
 
     points.push(new THREE.Vector3(mesh1.x, mesh1.y, 0));
 
-    if (mesh1.y < mesh2.y) {
-        points.push(new THREE.Vector3(mesh1.x, mesh2.y, 0));
+	var x1 = mesh1.x;
+	var y1 = mesh1.y;
+
+	var x2 = mesh2.x;
+	var y2 = mesh2.y;
+
+    if (x1 < y2) {
+        points.push(new THREE.Vector3(x1, y2, 0));
     } else {
-        points.push(new THREE.Vector3(mesh2.x, mesh1.y, 0));
+        points.push(new THREE.Vector3(x2, y1, 0));
     }
 
-    points.push(new THREE.Vector3(mesh2.x, mesh2.y, 0));
+    points.push(new THREE.Vector3(x2, y2, 0));
+
 
     // Create line geometry
     geometry = new THREE.BufferGeometry().setFromPoints(points);
@@ -263,13 +281,12 @@ function connect(relation, mesh1, mesh2) {
 	
 		// Add line and diamond to the scene
 		scene.add(sceneLine, diamondMesh);
+
+		sceneLine.mesh1 = mesh1;
+		sceneLine.mesh2 = mesh2;
+		connections.push(sceneLine);
 	}
-	
-	
-    
 }
-
-
 
 function findConnection(list){
 	if(list == inheritance){
@@ -295,46 +312,18 @@ findConnection(inheritance);
 findConnection(associations);
 findConnection(composition);
 
-//Render Scene
-renderer.render( scene, camera );
+// const controls = new OrbitControls(camera, renderer.domElement);
+// controls.enableZoom = true;
+// controls.enablePan = false;
+// controls.enableRotate = false;
+// controls.target.set(0, 0, 0);
 
+function animate() {
+    requestAnimationFrame(animate);
 
+	// controls.update();
 
-
-
-
-// Initialize camera position
-let cameraPosition = { x: 0, y: 0, z: 15 };
-
-// Define function to update camera position
-function updateCameraPosition() {
-    camera.position.set(cameraPosition.x, cameraPosition.y, cameraPosition.z);
-    camera.lookAt(scene.position);
+    renderer.render(scene, camera);
 }
 
-// Function to handle keyboard input
-function handleKeyPress(event) {
-	console.log("jkhjgf")
-    const step = 3; // Amount of movement per key press
-    switch (event.key) {
-        case 'ArrowUp':
-            cameraPosition.y += step;
-            break;
-        case 'ArrowDown':
-            cameraPosition.y -= step;
-            break;
-        case 'ArrowLeft':
-            cameraPosition.x -= step;
-            break;
-        case 'ArrowRight':
-            cameraPosition.x += step;
-            break;
-    }
-    updateCameraPosition();
-}
-
-// Add event listener for keyboard input
-document.addEventListener('keydown', handleKeyPress);
-
-// Initial camera setup
-updateCameraPosition();
+animate();
