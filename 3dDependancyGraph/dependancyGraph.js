@@ -43,7 +43,10 @@ var path = require("path");
 var promises_1 = require("fs/promises");
 var CreateConnections = /** @class */ (function () {
     function CreateConnections() {
-        this.graph = {};
+        this.inheritance = {};
+        this.composition = {};
+        this.association = {};
+        this.classified = new Set([]);
     }
     /**
     * Entry Point for Process
@@ -61,16 +64,59 @@ var CreateConnections = /** @class */ (function () {
                         _i = 0, files_1 = files;
                         _a.label = 2;
                     case 2:
-                        if (!(_i < files_1.length)) return [3 /*break*/, 6];
+                        if (!(_i < files_1.length)) return [3 /*break*/, 8];
                         file = files_1[_i];
-                        if (!file.isFile()) return [3 /*break*/, 4];
+                        if (!file.isFile()) return [3 /*break*/, 5];
+                        if (!(file.name[file.name.length - 1] == "h")) return [3 /*break*/, 4];
                         return [4 /*yield*/, this.ReadFile(dirname, file.name)];
                     case 3:
                         _a.sent();
+                        _a.label = 4;
+                    case 4: return [3 /*break*/, 7];
+                    case 5: 
+                    //If nested directory, start process in new directory
+                    return [4 /*yield*/, this.OpenFiles(path.join(dirname, file.name))];
+                    case 6:
+                        //If nested directory, start process in new directory
+                        _a.sent();
+                        _a.label = 7;
+                    case 7:
+                        _i++;
+                        return [3 /*break*/, 2];
+                    case 8: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    /**
+    * Determines C++ classes currently in directory
+    * Used to fill classfied set for ease of retrieval
+    * @param {string} dirname - The string containing current directory path
+    */
+    CreateConnections.prototype.ClassifyFiles = function (dirname) {
+        return __awaiter(this, void 0, void 0, function () {
+            var files, _i, files_2, file;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, (0, promises_1.readdir)(dirname, { withFileTypes: true })];
+                    case 1:
+                        files = _a.sent();
+                        _i = 0, files_2 = files;
+                        _a.label = 2;
+                    case 2:
+                        if (!(_i < files_2.length)) return [3 /*break*/, 6];
+                        file = files_2[_i];
+                        if (!file.isFile()) return [3 /*break*/, 3];
+                        if (file.name[file.name.length - 1] == "h") {
+                            this.classified.add(file.name.slice(0, -2));
+                        }
                         return [3 /*break*/, 5];
+                    case 3: 
+                    //If nested directory, start process in new directory
+                    return [4 /*yield*/, this.ClassifyFiles(path.join(dirname, file.name))];
                     case 4:
                         //If nested directory, start process in new directory
-                        this.OpenFiles(path.join(dirname, file.name));
+                        _a.sent();
                         _a.label = 5;
                     case 5:
                         _i++;
@@ -97,7 +143,7 @@ var CreateConnections = /** @class */ (function () {
                     });
                     rl_1.on('line', function (line) { return __awaiter(_this, void 0, void 0, function () {
                         return __generator(this, function (_a) {
-                            this.AddToGraph(path.join(dirname, filename), line);
+                            this.AddToGraph(path.join(dirname, filename), line, filename.slice(0, -2));
                             return [2 /*return*/];
                         });
                     }); });
@@ -118,19 +164,50 @@ var CreateConnections = /** @class */ (function () {
     * Creates connection between filePath and dependency
     * @param {string, string} filePath, line
     */
-    CreateConnections.prototype.AddToGraph = function (filePath, line) {
+    CreateConnections.prototype.AddToGraph = function (filePath, line, className) {
+        //Normalize Line
+        line = line.trim();
+        line = line.replace(/[:<>;]/g, " ");
         var lineParts = line.split(" ");
-        if (lineParts[0] === "from") {
-            if (!this.graph[filePath]) {
-                this.graph[filePath] = {};
+        if (lineParts[0] === "class" && lineParts.length > 1) {
+            var publicFound = false;
+            for (var i = 1; i < lineParts.length; i++) {
+                var item = lineParts[i];
+                if (item == "public") {
+                    publicFound = true;
+                }
+                if (this.classified.has(item) && publicFound) {
+                    if (!this.inheritance[item]) {
+                        this.inheritance[item] = [];
+                    }
+                    this.inheritance[item].push(className);
+                }
             }
-            this.graph[filePath][lineParts[1]] = [lineParts[3]];
         }
-        else if (lineParts[0] === "import") {
-            if (!this.graph[filePath]) {
-                this.graph[filePath] = {};
+        else {
+            var vector = false;
+            var foundClass;
+            for (var _i = 0, lineParts_1 = lineParts; _i < lineParts_1.length; _i++) {
+                var item = lineParts_1[_i];
+                if (item == "vector") {
+                    vector = true;
+                }
+                if (this.classified.has(item)) {
+                    foundClass = item;
+                }
             }
-            this.graph[filePath][lineParts[1]] = [];
+            if (vector == true && foundClass) {
+                if (!this.composition[className]) {
+                    this.composition[className] = [];
+                }
+                this.composition[className].push(foundClass);
+            }
+            else if (foundClass) {
+                if (!this.association[className]) {
+                    this.association[className] = [];
+                }
+                this.association[className].push(foundClass);
+            }
         }
     };
     return CreateConnections;
@@ -144,10 +221,18 @@ function test() {
             switch (_a.label) {
                 case 0:
                     connections = new CreateConnections();
-                    return [4 /*yield*/, connections.OpenFiles("./test")];
+                    return [4 /*yield*/, connections.ClassifyFiles("./test")];
                 case 1:
                     _a.sent();
-                    console.log(connections.graph);
+                    return [4 /*yield*/, connections.OpenFiles("./test")];
+                case 2:
+                    _a.sent();
+                    console.log(connections.association);
+                    console.log("");
+                    console.log(connections.composition);
+                    console.log("");
+                    console.log(connections.inheritance);
+                    console.log("");
                     return [2 /*return*/];
             }
         });

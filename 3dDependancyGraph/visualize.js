@@ -35,10 +35,10 @@ var associations = {
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 100, window.innerWidth / window.innerHeight, 0.1, 100000 );
 
-camera.position.z = 30;
+camera.position.z = 15;
 
-camera.position.x = 15;
-camera.position.y = -10;
+camera.position.x = 30;
+camera.position.y = -15;
 
 camera.pixelRatio = window.devicePixelRatio;
 
@@ -151,7 +151,7 @@ function positionRelatedMeshes(relation, scene, filed) {
         const parentIndex = filed[key];
 
         if (!placed.has(parentIndex)) {
-            scene.children[parentIndex].position.x = Math.random() * 25;
+            scene.children[parentIndex].position.x = Math.max(15, Math.random() * 25);
             placed.add(parentIndex);
         }
 
@@ -167,8 +167,12 @@ function positionRelatedMeshes(relation, scene, filed) {
             const childIndex = filed[relation[key][value]];
 
             if (!placed.has(childIndex)) {
-				if(parentY % 8 == 0){
-					scene.children[childIndex].position.x = parentX + addX + 2;
+				if(parentY % 16 == 0){
+					scene.children[childIndex].position.x = parentX + addX + 4;
+                	scene.children[childIndex].position.y = parentY - addY;
+				}
+				else if(parentY % 8 == 0){
+					scene.children[childIndex].position.x = parentX + addX + 8;
                 	scene.children[childIndex].position.y = parentY - addY;
 				}
 				else {
@@ -312,14 +316,45 @@ findConnection(inheritance);
 findConnection(associations);
 findConnection(composition);
 
+
+
 // const controls = new OrbitControls(camera, renderer.domElement);
+
+// Enable zoom
 // controls.enableZoom = true;
+
+var positionX = 0;
+var positionY = 0;
+
+// // Zoom to mouse position
+// renderer.domElement.addEventListener('wheel', event => {
+//     // Normalize wheel event delta across browsers
+//     const delta = event.deltaY * 0.01;
+
+//     // Calculate mouse position in normalized device coordinates (-1 to +1)
+//     const mouseX = (event.clientX / window.innerWidth) * 100 - 1;
+//     const mouseY = -(event.clientY / window.innerHeight) * 100 + 1;
+
+//     // Set zoom target to mouse position
+// 	positionX = mouseX;
+// 	positionY = mouseY;
+
+//     // Update controls
+//     controls.zoom += delta;
+
+//     // Clamp zoom min/max
+//     controls.zoom = Math.max(controls.minDistance, Math.min(controls.maxDistance, controls.zoom));
+
+// 	controls.update();
+// });
+
+// Disable pan
 // controls.enablePan = false;
-// controls.enableRotate = false;
-// controls.target.set(0, 0, 0);
 
 function animate() {
     requestAnimationFrame(animate);
+
+	// controls.target.set(positionX, positionY, 0);
 
 	// controls.update();
 

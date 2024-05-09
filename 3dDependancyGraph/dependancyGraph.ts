@@ -3,18 +3,33 @@ import { createInterface } from 'readline';
 import * as path from 'path';
 import { readdir } from 'fs/promises';
 
-type nestDict = {
-    [key: string]: string[];
-}
 
-type Graph = {
-    [key: string]: nestDict;
+
+type Inheritance = {
+    [key: string]: string[];
+};
+
+type Composition = {
+    [key: string]: string[];
+};
+
+type Association = {
+    [key: string]: string[];
 };
 
 export class CreateConnections {
-    graph: Graph;
+    inheritance: Inheritance;
+    composition: Composition;
+    association: Association;
+
+    classified;
+
     constructor() {
-        this.graph = {};
+        this.inheritance = {};
+        this.composition = {};
+        this.association = {};
+
+        this.classified = new Set([]);
     }
 
     /**
@@ -28,12 +43,36 @@ export class CreateConnections {
         //Go through each file in directory
         for (const file of files) {
             if (file.isFile()) {
-                await this.ReadFile(dirname, file.name);
+                if(file.name[file.name.length - 1] == "h"){
+                    await this.ReadFile(dirname, file.name);
+                }
             } else {
                 //If nested directory, start process in new directory
-                this.OpenFiles(path.join(dirname, file.name));
+                await this.OpenFiles(path.join(dirname, file.name));
             }
         }
+    }
+
+    /**
+    * Determines C++ classes currently in directory
+    * Used to fill classfied set for ease of retrieval
+    * @param {string} dirname - The string containing current directory path
+    */
+    async ClassifyFiles(dirname){
+        const files = await readdir(dirname, { withFileTypes: true });
+
+        //Go through each file in directory
+        for (const file of files) {
+            if (file.isFile()) {
+                if(file.name[file.name.length - 1] == "h"){
+                   this.classified.add(file.name.slice(0, -2));
+                }
+            } else {
+                //If nested directory, start process in new directory
+                await this.ClassifyFiles(path.join(dirname, file.name));
+            }
+        }
+
     }
 
     /**
@@ -50,7 +89,7 @@ export class CreateConnections {
             });
 
             rl.on('line', async (line) => {
-                this.AddToGraph(path.join(dirname, filename), line);
+                this.AddToGraph(path.join(dirname, filename), line, filename.slice(0, -2));
             });
 
             return new Promise<void>((resolve, reject) => {
@@ -67,18 +106,55 @@ export class CreateConnections {
     * Creates connection between filePath and dependency
     * @param {string, string} filePath, line
     */
-    AddToGraph(filePath, line) {
+    AddToGraph(filePath, line, className) {
+        //Normalize Line
+        line = line.trim();
+        line = line.replace(/[:<>;]/g, " ");
+
         var lineParts = line.split(" ");
-        if (lineParts[0] === "from") {
-            if (!this.graph[filePath]) {
-                this.graph[filePath] = {};
+        
+        if (lineParts[0] === "class" && lineParts.length > 1) {
+            var publicFound = false;
+
+            for (let i = 1; i < lineParts.length; i++) {
+                let item = lineParts[i];
+
+                if(item == "public"){
+                    publicFound = true;
+                }
+
+                if (this.classified.has(item) && publicFound) {
+                    if (!this.inheritance[item]) {
+                        this.inheritance[item] = [];
+                    }
+
+                    this.inheritance[item].push(className);
+                    
+                }
             }
-            this.graph[filePath][lineParts[1]] = [lineParts[3]];
-        } else if (lineParts[0] === "import") {
-            if (!this.graph[filePath]) {
-                this.graph[filePath] = {};
+        } else {
+            var vector = false;
+            var foundClass;
+            for (let item of lineParts) {
+                if(item == "vector"){
+                    vector = true;
+                }
+                if (this.classified.has(item)) {
+                    foundClass = item;
+                }
             }
-            this.graph[filePath][lineParts[1]] = [];
+
+            if(vector == true && foundClass){
+                if (!this.composition[className]) {
+                    this.composition[className] = [];
+                }
+                this.composition[className].push(foundClass);
+            } else if (foundClass) {
+                if (!this.association[className]) {
+                    this.association[className] = [];
+                }
+                this.association[className].push(foundClass);
+            }
         }
     }
 }
@@ -88,9 +164,19 @@ export class CreateConnections {
 async function test(){
     var connections = new CreateConnections();
 
+    await connections.ClassifyFiles("./test");
+
+    
     await connections.OpenFiles("./test");
 
-    console.log(connections.graph)
+    console.log(connections.association)
+    console.log("")
+
+    console.log(connections.composition)
+    console.log("")
+
+    console.log(connections.inheritance)
+    console.log("")
 
 }
 test();

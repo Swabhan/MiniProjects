@@ -1,0 +1,20 @@
+# Ignore node_modules directory
+/3dDependancyGraph/node_modules/
+
+# Ignore Test Folders
+/3dDependancyGraph/test/
+
+# Ignore generated files
+dist/
+bundle.js
+*.log
+
+# Ignore environment files
+.env
+
+# Ignore OS-generated files
+.DS_Store
+Thumbs.db
+
+# Ignore npm's cache
+.npm
